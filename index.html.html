@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Calculadora de precio de venta</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap">
+<style>
+:root{
+  --bg:#eef2f0; --panel:#ffffff; --ink:#14302b; --muted:#5b7069; --line:#d3ddd9;
+  --accent:#0f6b5c; --accent-ink:#ffffff; --hl:#f2b441; --hl-ink:#2b1d00; --bad:#b3261e;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1a17; --panel:#16251f; --ink:#e6f1ed; --muted:#93aaa2; --line:#2a3d36;
+    --accent:#3fc0a6; --accent-ink:#06201a; --hl:#f2b441; --hl-ink:#2b1d00; --bad:#ff8a80;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1a17; --panel:#16251f; --ink:#e6f1ed; --muted:#93aaa2; --line:#2a3d36;
+  --accent:#3fc0a6; --accent-ink:#06201a; --hl:#f2b441; --hl-ink:#2b1d00; --bad:#ff8a80;
+  color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;line-height:1.5}
+main{max-width:920px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:1.5rem;font-weight:800;margin:4px 0 4px;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0 0 20px;max-width:60ch}
+.grid{display:grid;gap:16px}
+@media(min-width:760px){.grid{grid-template-columns:1fr 1fr;align-items:start}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+.field{margin-bottom:14px}
+.field:last-child{margin-bottom:0}
+label{display:block;font-weight:600;font-size:.92rem;margin-bottom:4px}
+.hint{display:block;color:var(--muted);font-size:.8rem;font-weight:400;margin-top:2px}
+.inp{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;background:var(--bg);overflow:hidden}
+.inp:focus-within{outline:2px solid var(--accent);outline-offset:1px}
+.inp span{padding:0 12px;color:var(--muted);font-weight:600}
+.inp input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:inherit;font-size:1rem;padding:11px 12px;outline:none}
+.inp span+input{padding-left:0}
+.inp input+span{padding-left:0}
+.seg{display:flex;gap:6px;margin-bottom:8px}
+.seg button{flex:1;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;font-weight:600;font-size:.88rem;padding:9px 6px;border-radius:10px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.result{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.result .k{font-size:.9rem;opacity:.85}
+.price{font-size:clamp(2.4rem,9vw,3.4rem);font-weight:800;letter-spacing:-.02em;line-height:1.1;margin:2px 0 4px}
+.tax{font-size:.9rem;opacity:.9;min-height:1.3em}
+.rows{margin-top:14px;background:var(--panel);color:var(--ink);border-radius:12px;padding:6px 14px}
+.row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row .l{color:var(--muted)}
+.row b{font-weight:800;white-space:nowrap}
+.row.profit b{background:var(--hl);color:var(--hl-ink);padding:0 8px;border-radius:6px}
+.err{background:var(--panel);color:var(--bad);border:1px solid var(--bad);border-radius:12px;padding:14px;font-weight:600}
+.note{color:var(--muted);font-size:.82rem;margin-top:14px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Calculadora de precio de venta</h1>
+  <p class="sub">Escribe tu costo, la comisión, el descuento que ofreces y lo que quieres ganar. Te muestro el precio que debes poner.</p>
+
+  <div class="grid">
+    <section class="card" aria-label="Datos">
+      <div class="field">
+        <label for="costo">Costo del producto</label>
+        <div class="inp"><span>$</span><input id="costo" type="number" inputmode="decimal" min="0" step="any" value="100"></div>
+      </div>
+      <div class="field">
+        <label for="extra">Otros costos por unidad<small class="hint">Empaque, envío u otros gastos directos.</small></label>
+        <div class="inp"><span>$</span><input id="extra" type="number" inputmode="decimal" min="0" step="any" value="0"></div>
+      </div>
+      <div class="field">
+        <label id="lblIng">Ingreso esperado</label>
+        <div class="seg" role="group" aria-labelledby="lblIng">
+          <button type="button" id="mPct" aria-pressed="true">Margen en %</button>
+          <button type="button" id="mAmt" aria-pressed="false">Ganancia en $</button>
+        </div>
+        <div class="inp"><span id="ingPre" hidden>$</span><input id="ing" type="number" inputmode="decimal" min="0" step="any" value="30" aria-labelledby="lblIng"><span id="ingPost">%</span></div>
+        <small class="hint" id="ingHint">Porcentaje del precio que paga el cliente que quieres quedarte como ganancia.</small>
+      </div>
+      <div class="field">
+        <label for="com">Comisión<small class="hint">Plataforma de pedidos, tarjeta o vendedor. Se cobra sobre lo que paga el cliente.</small></label>
+        <div class="inp"><input id="com" type="number" inputmode="decimal" min="0" step="any" value="15"><span>%</span></div>
+      </div>
+      <div class="field">
+        <label for="desc">Descuento al cliente<small class="hint">Se aplica sobre el precio de lista.</small></label>
+        <div class="inp"><input id="desc" type="number" inputmode="decimal" min="0" step="any" value="0"><span>%</span></div>
+      </div>
+      <div class="field">
+        <label for="iva">Impuesto (IVA)<small class="hint">Déjalo en 0 si tus precios ya lo incluyen.</small></label>
+        <div class="inp"><input id="iva" type="number" inputmode="decimal" min="0" step="any" value="0"><span>%</span></div>
+      </div>
+    </section>
+
+    <section aria-live="polite">
+      <div id="out"></div>
+    </section>
+  </div>
+</main>
+
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id)};
+  var mode='pct';
+  var ids=['costo','extra','ing','com','desc','iva'];
+  var KEY='calc-precio-v1';
+  var fmt=new Intl.NumberFormat('es',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
+  function money(n){return fmt.format(n).replace('US$','$')}
+  function pct(n){return (Math.round(n*10)/10)+'%'}
+  function num(id){var v=parseFloat($(id).value);return isFinite(v)&&v>=0?v:0}
+
+  function save(){
+    try{var s={mode:mode};ids.forEach(function(i){s[i]=$(i).value});localStorage.setItem(KEY,JSON.stringify(s))}catch(e){}
+  }
+  function load(){
+    try{
+      var s=JSON.parse(localStorage.getItem(KEY)||'null');
+      if(!s)return;
+      ids.forEach(function(i){if(s[i]!==undefined)$(i).value=s[i]});
+      if(s.mode)setMode(s.mode,true);
+    }catch(e){}
+  }
+  function setMode(m,silent){
+    mode=m;
+    $('mPct').setAttribute('aria-pressed',m==='pct');
+    $('mAmt').setAttribute('aria-pressed',m==='amt');
+    $('ingPre').hidden=m!=='amt';
+    $('ingPost').hidden=m!=='pct';
+    $('ingHint').textContent=m==='pct'
+      ?'Porcentaje del precio que paga el cliente que quieres quedarte como ganancia.'
+      :'Cantidad en dinero que quieres ganar por cada unidad vendida.';
+    if(!silent){$('ing').value=m==='pct'?30:30;calc()}
+  }
+
+  function calc(){
+    var cost=num('costo')+num('extra');
+    var ing=num('ing'), c=num('com')/100, d=num('desc')/100, t=num('iva')/100;
+    var out=$('out'), pay, err='';
+
+    if(d>=1) err='El descuento debe ser menor a 100%.';
+    else if(mode==='pct'){
+      var m=ing/100;
+      if(c+m>=1) err='La comisión y el margen suman '+pct((c+m)*100)+'. Deben sumar menos de 100% para que el precio exista. Baja uno de los dos.';
+      else pay=cost/(1-c-m);
+    } else {
+      if(c>=1) err='La comisión debe ser menor a 100%.';
+      else pay=(cost+ing)/(1-c);
+    }
+
+    if(err){out.innerHTML='<div class="err" role="alert">'+err+'</div>';save();return}
+
+    var list=pay/(1-d);
+    var withTax=list*(1+t);
+    var commission=pay*c;
+    var profit=pay-commission-cost;
+    var margin=pay>0?profit/pay*100:0;
+    var markup=cost>0?profit/cost*100:0;
+
+    var h='<div class="card result">'
+      +'<div class="k">Precio de venta (de lista)</div>'
+      +'<div class="price">'+money(list)+'</div>'
+      +'<div class="tax">'+(t>0?'Con impuesto: <b>'+money(withTax)+'</b>':'')+'</div>'
+      +'<div class="rows">'
+      +(d>0?row('Cliente paga con descuento',money(pay)):'')
+      +(d>0?row('Descuento otorgado','−'+money(list-pay)):'')
+      +row('Comisión ('+pct(c*100)+')','−'+money(commission))
+      +row('Costo total','−'+money(cost))
+      +'<div class="row profit"><span class="l">Ganancia por unidad</span><b>'+money(profit)+'</b></div>'
+      +row('Margen sobre lo que paga el cliente',pct(margin))
+      +row('Ganancia sobre el costo',pct(markup))
+      +'</div></div>'
+      +'<p class="note">Si aplicas el descuento, tu ganancia por unidad se mantiene porque el precio de lista ya lo cubre.</p>';
+    out.innerHTML=h;
+    save();
+  }
+  function row(l,v){return '<div class="row"><span class="l">'+l+'</span><b>'+v+'</b></div>'}
+
+  ids.forEach(function(i){$(i).addEventListener('input',calc)});
+  $('mPct').addEventListener('click',function(){if(mode!=='pct')setMode('pct')});
+  $('mAmt').addEventListener('click',function(){if(mode!=='amt')setMode('amt')});
+  load();calc();
+})();
+</script>
+</body>
+</html>
